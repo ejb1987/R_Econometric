@@ -19,7 +19,7 @@ if (!requireNamespace("rmarkdown", quietly = TRUE)) {
 library(readxl)
 
 # Specify the file path
-file_path <- "C:/Users/ehsan/OneDrive - University of Essex/Courses/Econometrics/Coursework2/Final.xlsx"
+file_path <- "Final.xlsx"
 
 # Read the Excel file into a data frame
 data <- read_excel(file_path)

@@ -1,0 +1,322 @@
+---
+title: "index"
+author: "Ehsan"
+date: "2023-12-19"
+output: html_document
+---
+
+```{r, echo=TRUE}
+
+if (!requireNamespace("readxl", quietly = TRUE)) {
+  install.packages("readxl")
+}
+
+if (!requireNamespace("rmarkdown", quietly = TRUE)) {
+  install.packages("rmarkdown")
+}
+
+# Load the readxl package
+library(readxl)
+
+# Specify the file path
+file_path <- "C:/Users/ehsan/OneDrive - University of Essex/Courses/Econometrics/Coursework2/Final.xlsx"
+
+# Read the Excel file into a data frame
+data <- read_excel(file_path)
+
+data <- subset(data, select = 1:(ncol(data) - 4))
+
+data <- data[, !(names(data) %in% c("gas_f", "gas_s"))]
+
+# Assuming 'data' is your data frame
+data$s <- log(data$soy_s)
+data$f <- log(data$soy_f)
+
+head(data)
+
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  install.packages("ggplot2")
+}
+
+# Assuming 'data' is your data frame and you have the ggplot2 library installed
+library(ggplot2)
+library(scales)  # Required for date_format function
+
+# Convert 'Date' column to Date class
+data$Date <- as.Date(data$Date)
+
+# Create a ggplot with custom aesthetics
+my_plot <- ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = s, color = "Spot"), size = 0.5) +
+  geom_line(aes(y = f, color = "Forward"), size = 1, linetype = "dashed") +
+  labs(x = "Year", y = "Natural Logarithm of Price") +
+  scale_color_manual(values = c("Spot" = "steelblue", "Forward" = "coral")) +
+  
+  # Scale x-axis with breaks for years and minor breaks for months
+  scale_x_date(
+    date_breaks = "1 year",  # Set major breaks for years
+    date_labels = "%Y",      # Format major break labels as years
+    labels = date_format("%b", tz = "UTC"),  # Format all labels as months
+    expand = c(0, 0)
+  ) +
+  
+  # Add a theme for better appearance
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",  # Move the legend to the bottom
+    panel.grid.major = element_blank(),  # Remove major gridlines
+    panel.grid.minor = element_blank(),  # Remove minor gridlines
+    axis.line = element_line(color = "black"),  # Set color of axis lines
+    legend.box.background = element_rect(color = "black"),  # Set legend box color
+    legend.text = element_text(size = 10),  # Adjust legend text size
+    legend.title = element_blank(),  # Remove legend title
+    axis.text = element_text(size = 10),  # Adjust axis text size
+    axis.title = element_text(size = 10, face = "bold")  # Adjust axis title size and style
+  )
+my_plot
+
+# Save the plot as a PNG file
+ggsave("C:/Users/ehsan/OneDrive - University of Essex/Courses/Econometrics/Coursework2/R/Question1.png", plot = my_plot, width = 10, height = 6, dpi = 300)
+
+if (!requireNamespace("tseries", quietly = TRUE)) {
+  install.packages("tseries")
+}
+
+library(tseries)
+
+# Install and load the urca package if not already installed
+if (!requireNamespace("urca", quietly = TRUE)) {
+  install.packages("urca")
+}
+library(urca)
+
+# Assuming 'data' is your data frame
+data$Date <- as.Date(data$Date)
+
+# Extract 's' and 'f' columns as time series
+s_time_series <- ts(data$s, frequency = 52)  # Assuming weekly data
+f_time_series <- ts(data$f, frequency = 52)  # Assuming weekly data
+
+# Perform Augmented Dickey-Fuller test with automatic lag selection for 's'
+adf_test_s <- ur.df(s_time_series, type = "drift", selectlags = "BIC")
+
+# Perform Augmented Dickey-Fuller test with automatic lag selection for 'f'
+adf_test_f <- ur.df(f_time_series, type = "drift", selectlags = "BIC")
+
+# Print the results
+cat("ADF Test Results for 's':\n")
+summary(adf_test_s)
+
+cat("\nADF Test Results for 'f':\n")
+summary(adf_test_f)
+
+
+# Take the first differences of 's' and 'f'
+s_diff <- diff(s_time_series)
+f_diff <- diff(f_time_series)
+
+# Perform Augmented Dickey-Fuller test for first differences of 's' with only an intercept
+adf_test_s_diff <- ur.df(s_diff, type = "none", selectlags = "BIC")
+
+# Perform Augmented Dickey-Fuller test for first differences of 'f' with only an intercept
+adf_test_f_diff <- ur.df(f_diff, type = "none", selectlags = "BIC")
+
+# Print the results
+cat("ADF Test Results for first differences of 's':\n")
+summary(adf_test_s_diff)
+
+cat("\nADF Test Results for first differences of 'f':\n")
+summary(adf_test_f_diff)
+
+# Cointegration ###################
+# Step 1: Run a linear regression of 's' on 'f'
+regression_step1 <- lm(s_time_series ~ f_time_series)
+
+# Step 2: Obtain the residuals from the regression
+residuals_step2 <- residuals(regression_step1)
+
+# Step 3: Test for stationarity of residuals (Augmented Dickey-Fuller test)
+adf_test_residuals <- ur.df(residuals_step2, type = "none", selectlags = "BIC")
+
+# Print the results
+cat("ADF Test Results for residuals:\n")
+summary(adf_test_residuals)
+
+# ECM #############
+
+# Step 1: Run a cointegrating regression: s ~ f
+cointegration_regression <- lm(s_time_series ~ f_time_series)
+
+# Step 2: Obtain the residuals from the cointegrating regression
+residuals_cointegration <- residuals(cointegration_regression)
+
+# Step 3: Calculate first differences of 's' and 'f'
+s_diff <- diff(s_time_series)
+f_diff <- diff(f_time_series)
+
+# Step 4: Create lagged residuals (lagged u_hat_t)
+lagged_residuals <- c(NA, residuals_cointegration)
+
+# Trim the vectors to have the same length
+#s_diff <- s_diff[-1]
+#f_diff <- f_diff[-1]
+lagged_residuals <- c(NA, head(residuals_cointegration, -2))
+
+# Combine variables into a data frame
+ecm_data <- data.frame(s_diff = s_diff, f_diff = f_diff, lagged_residuals = lagged_residuals)
+
+# Step 5: Formulate and estimate the Error Correction Model (ECM)
+ecm_model <- lm(s_diff ~ f_diff + lagged_residuals, data = ecm_data)
+
+# Print the results
+summary(ecm_model)
+
+# Create R ###########
+# Install and load the dplyr package if not already installed
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  install.packages("dplyr")
+}
+library(dplyr)
+
+
+# Calculate log returns
+log_returns <- log(data$soy_s/lag(data$soy_s, 1))
+head(log_returns)
+
+# Create a new data frame with log returns and dates
+returns_data <- data.frame(Date = data$Date, Log_Returns = log_returns)
+
+# Specify the width for the PNG file
+#png("C:/Users/ehsan/OneDrive - University of Essex/Courses/Econometrics/Coursework2/R/returns.png", width = 800)  # Adjust the width as needed
+
+# Plot the return series
+plot(returns_data$Date, returns_data$Log_Returns, type = "l", col = "blue", xlab = "Date", ylab = "Returns", main = "Log Return Series")
+
+# Save and close the PNG device
+#dev.off()
+
+# AR(1) #####
+
+# Estimate AR(1) model
+ar1_model <- arima(log_returns, order = c(1, 0, 0))
+
+# Load the required packages
+if (!requireNamespace("stargazer", quietly = TRUE)) {
+  install.packages("stargazer")
+}
+library(stargazer)
+
+# Print the table
+stargazer(ar1_model, type = "text")
+
+# Extract residuals
+residuals_ar1 <- residuals(ar1_model)
+
+# Calculate squared residuals
+squared_residuals <- residuals_ar1^2
+
+# Specify the number of lags for the ARCH test
+num_lags_arch_test <- 5
+
+if (!requireNamespace("FinTS", quietly = TRUE)) {
+  install.packages("FinTS")
+}
+
+library(FinTS)
+
+# Perform the ARCH test
+arch_test_result <- ArchTest(squared_residuals, lags = num_lags_arch_test , demean = TRUE)
+
+# Print the ARCH test results
+print(arch_test_result)
+
+# GARCH #####
+
+# Load the required packages
+if (!requireNamespace("rugarch", quietly = TRUE)) {
+  install.packages("rugarch")
+}
+library(rugarch)
+
+if (any(is.na(log_returns))) {
+  log_returns <- na.omit(log_returns)
+}
+
+# Specify the model
+spec <- ugarchspec(mean.model = list(armaOrder = c(1, 0)), 
+                   variance.model = list(model = "sGARCH", garchOrder = c(1, 1)))
+
+# Estimate the model
+garch_model <- ugarchfit(spec, data = log_returns)
+
+# Print the model summary
+show(garch_model)
+
+# Extract the conditional volatility series
+conditional_volatility <- sigma(garch_model)
+
+# Plot the conditional volatility
+plot(conditional_volatility, type = "l", col = "blue", 
+     xlab = "Date", ylab = "Conditional Volatility", 
+     main = "Conditional Volatility (GARCH(1,1))")
+
+# GJRGARCH ###########
+
+# Specify the GJR GARCH model without external regressors
+spec <- ugarchspec(mean.model = list(armaOrder = c(1, 0)),
+                   variance.model = list(model = "gjrGARCH", garchOrder = c(1, 1)))
+
+returns_df <- data.frame(Date = data$Date[-1], Returns = log_returns)
+# Estimate the model
+gjr_garch_model <- ugarchfit(data = returns_df$Returns, spec = spec)
+
+# Print the model summary
+show(gjr_garch_model)
+
+# Extract the conditional volatility series
+conditional_volatility <- sigma(gjr_garch_model)
+
+# Plot the conditional volatility
+plot(conditional_volatility, type = "l", col = "purple", 
+     xlab = "Date", ylab = "Conditional Volatility", 
+     main = "Conditional Volatility (GJR GARCH)")
+
+# Q9 ########
+if (!requireNamespace("knitr", quietly = TRUE)) {
+  install.packages("knitr")
+}
+
+library(knitr)
+
+# Calculate information criteria for garch_model
+info_criteria_garch <- unlist(infocriteria(garch_model))
+
+# Calculate information criteria for gjr_garch_model
+info_criteria_gjr_garch <- unlist(infocriteria(gjr_garch_model))
+
+# Create a data frame for the table
+info_criteria_table <- data.frame(
+  Model = c("GARCH", "GJR-GARCH"),
+  Akaike = c(info_criteria_garch[1], info_criteria_gjr_garch[1]),
+  Bayes = c(info_criteria_garch[2], info_criteria_gjr_garch[2]),
+  Shibata = c(info_criteria_garch[3], info_criteria_gjr_garch[3]),
+  HQ = c(info_criteria_garch[4], info_criteria_gjr_garch[4])
+)
+
+# Function to determine model type based on criterion name
+get_model_type <- function(criterion_values) {
+  model_types <- c("GARCH", "GJR")
+  selected_model <- model_types[which.min(criterion_values)]
+  return(selected_model)
+}
+
+# Add a row for the model type
+model_types <- apply(info_criteria_table[, -1], 2, get_model_type)
+info_criteria_table <- rbind(
+  info_criteria_table,
+  c("Best Model", model_types)
+)
+
+# Print the table
+print(kable(info_criteria_table, format = "markdown", digits = 5))
+

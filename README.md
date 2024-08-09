@@ -1,6 +1,6 @@
-# Econometric Analysis with RMarkdown
+# Econometric Analysis with R
 
-This repository contains an RMarkdown document that performs an econometric analysis on soybean spot and future price data using various statistical and econometric techniques. The analysis is presented in both code and results form, with the RMarkdown file generating an HTML document for easy viewing.
+This repository contains an RMarkdown document that performs an econometric analysis on soybean spot and future price data using various statistical and econometric techniques. The study is presented in both code and results form, with the RMarkdown file generating an HTML document for easy viewing.
 
 ## Table of Contents
 - [Description](#description)

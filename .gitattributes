@@ -1,7 +1,3 @@
 # Example of a `.gitattributes` file which reclassifies `.Rmd` files as Java:
 *.Rmd linguist-language=R
 
-# Language names are case-insensitive and may be specified using an alias.
-# So, the following three lines are all functionally equivalent:
-*.Rmd linguist-language=r
-*.Rmd linguist-language=R

@@ -1,10 +1,7 @@
-# Example of a `.gitattributes` file which reclassifies `.rb` files as Java:
+# Example of a `.gitattributes` file which reclassifies `.Rmd` files as Java:
 *.Rmd linguist-language=R
-
-# Replace any whitespace in the language name with hyphens:
-*.glyphs linguist-language=OpenStep-Property-List
 
 # Language names are case-insensitive and may be specified using an alias.
 # So, the following three lines are all functionally equivalent:
-*.es linguist-language=r
-*.es linguist-language=R
+*.Rmd linguist-language=r
+*.Rmd linguist-language=R
